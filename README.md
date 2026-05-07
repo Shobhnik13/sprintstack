@@ -73,7 +73,8 @@ bun install
 docker-compose up -d
 ```
 
-Starts PostgreSQL on `localhost:5432` and Redis on `localhost:6379`.
+Starts PostgreSQL on `localhost:5432` and Redis on `localhost:6379`.  
+The app itself runs natively via Bun (Step 6) — not inside Docker.
 
 ### Step 3 — Configure environment
 

@@ -29,23 +29,6 @@ services:
       timeout: 5s
       retries: 10
 
-  app:
-    build: .
-    container_name: swiggy_pm_app
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/swiggy_pm
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-do-not-use-in-production}
-      PORT: 3000
-      NODE_ENV: production
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
 volumes:
   postgres_data:
   redis_data:
