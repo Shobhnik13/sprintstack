@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1778081583050,
+      "tag": "0000_amazing_ben_urich",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778083044698,
+      "tag": "0001_luxuriant_warlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778086519437,
+      "tag": "0002_tearful_jubilee",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778086857002,
+      "tag": "0003_yellow_brother_voodoo",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778087193535,
+      "tag": "0004_massive_dark_beast",
+      "breakpoints": true
+    }
+  ]
+}

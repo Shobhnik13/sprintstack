@@ -1,0 +1,1168 @@
+openapi: 3.0.3
+info:
+  title: Project Management Platform API
+  version: 1.0.0
+  description: >
+    Jira-like project management backend — Swiggy SDE-1 Assignment.
+    Authentication uses HTTP-only cookie (token) set on login.
+    All protected endpoints require the cookie to be present.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Registration and login
+  - name: Workspaces
+    description: Workspace and member management
+  - name: Projects
+    description: Projects, workflow statuses and transitions
+  - name: Issues
+    description: Issue CRUD, transitions, watchers
+  - name: Comments
+    description: Threaded comments with @mentions
+  - name: Sprints
+    description: Sprint lifecycle and carry-over
+  - name: Activity
+    description: Project activity feed
+  - name: Notifications
+    description: Per-user notification inbox
+  - name: Search
+    description: Full-text and structured issue search
+
+# ─────────────────────────────────────────────
+# Reusable schemas
+# ─────────────────────────────────────────────
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    User:
+      type: object
+      properties:
+        id:          { type: string, format: uuid }
+        email:       { type: string, format: email }
+        display_name: { type: string }
+        avatar_url:  { type: string, nullable: true }
+        created_at:  { type: string, format: date-time }
+
+    Workspace:
+      type: object
+      properties:
+        id:         { type: string, format: uuid }
+        name:       { type: string }
+        slug:       { type: string }
+        owner_id:   { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+
+    WorkspaceMember:
+      type: object
+      properties:
+        workspace_id: { type: string, format: uuid }
+        user_id:      { type: string, format: uuid }
+        role:
+          type: string
+          enum: [owner, admin, member, viewer]
+        joined_at: { type: string, format: date-time }
+
+    Project:
+      type: object
+      properties:
+        id:           { type: string, format: uuid }
+        workspace_id: { type: string, format: uuid }
+        name:         { type: string }
+        key:          { type: string, example: APP }
+        description:  { type: string, nullable: true }
+        created_by:   { type: string, format: uuid }
+        created_at:   { type: string, format: date-time }
+
+    WorkflowStatus:
+      type: object
+      properties:
+        id:         { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        name:       { type: string }
+        color:      { type: string, example: "#3B82F6" }
+        category:
+          type: string
+          enum: [todo, in_progress, done]
+        position:   { type: integer }
+
+    WorkflowTransition:
+      type: object
+      properties:
+        id:             { type: string, format: uuid }
+        project_id:     { type: string, format: uuid }
+        from_status_id: { type: string, format: uuid, nullable: true }
+        to_status_id:   { type: string, format: uuid }
+
+    Issue:
+      type: object
+      properties:
+        id:           { type: string, format: uuid }
+        project_id:   { type: string, format: uuid }
+        issue_number: { type: integer }
+        sprint_id:    { type: string, format: uuid, nullable: true }
+        status_id:    { type: string, format: uuid }
+        parent_id:    { type: string, format: uuid, nullable: true }
+        reporter_id:  { type: string, format: uuid }
+        assignee_id:  { type: string, format: uuid, nullable: true }
+        type:
+          type: string
+          enum: [epic, story, task, bug, subtask]
+        priority:
+          type: string
+          enum: [lowest, low, medium, high, critical]
+        title:        { type: string }
+        description:  { type: string, nullable: true }
+        story_points: { type: integer, nullable: true }
+        labels:       { type: array, items: { type: string } }
+        version:      { type: integer }
+        created_at:   { type: string, format: date-time }
+        updated_at:   { type: string, format: date-time }
+
+    Comment:
+      type: object
+      properties:
+        id:                { type: string, format: uuid }
+        issue_id:          { type: string, format: uuid }
+        parent_comment_id: { type: string, format: uuid, nullable: true }
+        body:              { type: string }
+        mentions:          { type: array, items: { type: string, format: uuid } }
+        author_id:         { type: string, format: uuid }
+        author_email:      { type: string }
+        author_display_name: { type: string, nullable: true }
+        author_avatar_url: { type: string, nullable: true }
+        created_at:        { type: string, format: date-time }
+        updated_at:        { type: string, format: date-time }
+
+    Sprint:
+      type: object
+      properties:
+        id:               { type: string, format: uuid }
+        project_id:       { type: string, format: uuid }
+        name:             { type: string }
+        status:
+          type: string
+          enum: [planning, active, completed]
+        start_date:       { type: string, format: date, nullable: true }
+        end_date:         { type: string, format: date, nullable: true }
+        velocity_points:  { type: integer, nullable: true }
+        completed_at:     { type: string, format: date-time, nullable: true }
+
+    ActivityEvent:
+      type: object
+      properties:
+        id:         { type: string, format: uuid }
+        project_id: { type: string, format: uuid }
+        issue_id:   { type: string, format: uuid, nullable: true }
+        actor_id:   { type: string, format: uuid }
+        event_type:
+          type: string
+          enum: [issue_created, issue_updated, transition_applied, comment_added, watcher_added, sprint_started, sprint_completed]
+        old_value:  { type: string, nullable: true, description: JSON string }
+        new_value:  { type: string, nullable: true, description: JSON string }
+        created_at: { type: string, format: date-time }
+
+    Notification:
+      type: object
+      properties:
+        id:           { type: string, format: uuid }
+        recipient_id: { type: string, format: uuid }
+        actor_id:     { type: string, format: uuid }
+        issue_id:     { type: string, format: uuid, nullable: true }
+        project_id:   { type: string, format: uuid, nullable: true }
+        type:
+          type: string
+          enum: [mentioned, comment_added, status_changed, assigned]
+        read_at:    { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    Cursor:
+      type: object
+      properties:
+        next_cursor:
+          type: string
+          nullable: true
+          description: Pass as ?cursor= on next request. Null means no more pages.
+
+# ─────────────────────────────────────────────
+# Security default (all routes protected unless overridden)
+# ─────────────────────────────────────────────
+security:
+  - cookieAuth: []
+
+# ─────────────────────────────────────────────
+# Paths
+# ─────────────────────────────────────────────
+paths:
+
+  # ── Health ──────────────────────────────────
+  /health:
+    get:
+      summary: Health check
+      security: []
+      tags: []
+      responses:
+        "200":
+          description: Server is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  timestamp: { type: string, format: date-time }
+
+  # ── Auth ────────────────────────────────────
+  /api/auth/register:
+    post:
+      summary: Register a new user
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:        { type: string, format: email }
+                password:     { type: string, minLength: 8 }
+                display_name: { type: string }
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/auth/login:
+    post:
+      summary: Login — sets HttpOnly JWT cookie
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:    { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Logged in — cookie set
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: token=eyJ...; HttpOnly; Path=/
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: "#/components/schemas/User" }
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/auth/logout:
+    post:
+      summary: Logout — clears cookie
+      tags: [Auth]
+      responses:
+        "204":
+          description: Cookie cleared
+
+  # ── Workspaces ──────────────────────────────
+  /api/workspaces:
+    post:
+      summary: Create workspace
+      tags: [Workspaces]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug]
+              properties:
+                name: { type: string, maxLength: 255 }
+                slug: { type: string, maxLength: 100, pattern: "^[a-z0-9-]+$" }
+      responses:
+        "201":
+          description: Workspace created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspace: { $ref: "#/components/schemas/Workspace" }
+        "409":
+          description: Slug already taken
+    get:
+      summary: List workspaces for current user
+      tags: [Workspaces]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspaces:
+                    type: array
+                    items: { $ref: "#/components/schemas/Workspace" }
+
+  /api/workspaces/{id}:
+    get:
+      summary: Get workspace
+      tags: [Workspaces]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workspace: { $ref: "#/components/schemas/Workspace" }
+        "403": { description: Not a member }
+        "404": { description: Not found }
+
+  /api/workspaces/{id}/members:
+    post:
+      summary: Add member to workspace
+      tags: [Workspaces]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, role]
+              properties:
+                email: { type: string, format: email }
+                role:  { type: string, enum: [admin, member, viewer] }
+      responses:
+        "201":
+          description: Member added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  member: { $ref: "#/components/schemas/WorkspaceMember" }
+        "404": { description: User not found }
+        "409": { description: Already a member }
+
+  /api/workspaces/{id}/members/{userId}:
+    patch:
+      summary: Update member role
+      tags: [Workspaces]
+      parameters:
+        - { name: id,     in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [admin, member, viewer] }
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  member: { $ref: "#/components/schemas/WorkspaceMember" }
+        "403": { description: Insufficient role }
+    delete:
+      summary: Remove member from workspace
+      tags: [Workspaces]
+      parameters:
+        - { name: id,     in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: userId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Removed }
+        "403": { description: Insufficient role }
+
+  # ── Projects ────────────────────────────────
+  /api/workspaces/{workspaceId}/projects:
+    post:
+      summary: Create project inside workspace
+      tags: [Projects]
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, key]
+              properties:
+                name:        { type: string, maxLength: 255 }
+                key:         { type: string, minLength: 2, maxLength: 10, pattern: "^[A-Z0-9]+$", example: APP }
+                description: { type: string, maxLength: 1000 }
+      responses:
+        "201":
+          description: Project created with default workflow
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project: { $ref: "#/components/schemas/Project" }
+    get:
+      summary: List projects in workspace
+      tags: [Projects]
+      parameters:
+        - { name: workspaceId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  projects:
+                    type: array
+                    items: { $ref: "#/components/schemas/Project" }
+
+  /api/projects/{id}:
+    get:
+      summary: Get project
+      tags: [Projects]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project: { $ref: "#/components/schemas/Project" }
+
+  /api/projects/{id}/board:
+    get:
+      summary: Get kanban board — issues grouped by status
+      tags: [Projects]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Board columns with issues
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  board:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status:  { $ref: "#/components/schemas/WorkflowStatus" }
+                        issues:
+                          type: array
+                          items: { $ref: "#/components/schemas/Issue" }
+
+  /api/projects/{id}/workflow:
+    get:
+      summary: Get project workflow — statuses and transitions
+      tags: [Projects]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  workflow:
+                    type: object
+                    properties:
+                      statuses:
+                        type: array
+                        items: { $ref: "#/components/schemas/WorkflowStatus" }
+                      transitions:
+                        type: array
+                        items: { $ref: "#/components/schemas/WorkflowTransition" }
+
+  /api/projects/{id}/workflow/statuses:
+    post:
+      summary: Add custom status to workflow
+      tags: [Projects]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, category]
+              properties:
+                name:     { type: string, maxLength: 100 }
+                color:    { type: string, pattern: "^#[0-9A-Fa-f]{6}$", example: "#3B82F6" }
+                category: { type: string, enum: [todo, in_progress, done] }
+      responses:
+        "201":
+          description: Status added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { $ref: "#/components/schemas/WorkflowStatus" }
+
+  /api/projects/{id}/workflow/transitions:
+    post:
+      summary: Add workflow transition
+      tags: [Projects]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to_status_id]
+              properties:
+                to_status_id:   { type: string, format: uuid }
+                from_status_id: { type: string, format: uuid, description: Omit to allow transition from any status }
+      responses:
+        "201":
+          description: Transition added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transition: { $ref: "#/components/schemas/WorkflowTransition" }
+
+  /api/projects/{id}/presence:
+    get:
+      summary: Get online user IDs for a project (WebSocket presence)
+      tags: [Projects]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  online_user_ids:
+                    type: array
+                    items: { type: string, format: uuid }
+
+  /api/projects/{id}/activity:
+    get:
+      summary: Project activity feed with cursor pagination
+      tags: [Activity]
+      parameters:
+        - { name: id,         in: path,  required: true,  schema: { type: string, format: uuid } }
+        - { name: cursor,     in: query, required: false, schema: { type: string } }
+        - { name: limit,      in: query, required: false, schema: { type: integer, default: 20, maximum: 100 } }
+        - { name: event_type, in: query, required: false, schema: { type: string } }
+        - { name: actor_id,   in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: issue_id,   in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Cursor"
+                  - type: object
+                    properties:
+                      events:
+                        type: array
+                        items: { $ref: "#/components/schemas/ActivityEvent" }
+
+  # ── Issues ──────────────────────────────────
+  /api/projects/{id}/issues:
+    post:
+      summary: Create issue in project
+      tags: [Issues]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:       { type: string }
+                type:        { type: string, enum: [epic, story, task, bug, subtask], default: task }
+                priority:    { type: string, enum: [lowest, low, medium, high, critical], default: medium }
+                description: { type: string }
+                assignee_id: { type: string, format: uuid }
+                parent_id:   { type: string, format: uuid }
+                story_points:{ type: integer }
+                labels:      { type: array, items: { type: string } }
+      responses:
+        "201":
+          description: Issue created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue: { $ref: "#/components/schemas/Issue" }
+
+  /api/issues/{id}:
+    get:
+      summary: Get issue with watchers
+      tags: [Issues]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue:
+                    allOf:
+                      - $ref: "#/components/schemas/Issue"
+                      - type: object
+                        properties:
+                          watchers:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                user_id:      { type: string, format: uuid }
+                                email:        { type: string }
+                                display_name: { type: string, nullable: true }
+                                avatar_url:   { type: string, nullable: true }
+    patch:
+      summary: Update issue (optimistic locking — must supply version)
+      tags: [Issues]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version]
+              properties:
+                version:      { type: integer, description: Must match current version or 409 is returned }
+                title:        { type: string }
+                type:         { type: string, enum: [epic, story, task, bug, subtask] }
+                priority:     { type: string, enum: [lowest, low, medium, high, critical] }
+                description:  { type: string, nullable: true }
+                assignee_id:  { type: string, format: uuid, nullable: true }
+                parent_id:    { type: string, format: uuid, nullable: true }
+                story_points: { type: integer, nullable: true }
+                labels:       { type: array, items: { type: string } }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue: { $ref: "#/components/schemas/Issue" }
+        "409":
+          description: Version conflict — another update landed first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:          { type: string, example: conflict }
+                  currentVersion: { type: integer }
+    delete:
+      summary: Soft-delete issue
+      tags: [Issues]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Deleted }
+        "403": { description: Not reporter or admin }
+
+  /api/issues/{id}/transitions:
+    post:
+      summary: Transition issue to a new status
+      tags: [Issues]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to_status_id]
+              properties:
+                to_status_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Transitioned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue: { $ref: "#/components/schemas/Issue" }
+        "422":
+          description: Invalid transition or condition not met
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:         { type: string, example: invalid_transition }
+                  currentStatus: { type: string }
+                  allowedTransitions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:   { type: string, format: uuid }
+                        name: { type: string }
+
+  /api/issues/{id}/comments:
+    get:
+      summary: List comments (cursor paginated)
+      tags: [Comments]
+      parameters:
+        - { name: id,     in: path,  required: true,  schema: { type: string, format: uuid } }
+        - { name: cursor, in: query, required: false, schema: { type: string } }
+        - { name: limit,  in: query, required: false, schema: { type: integer, default: 20 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Cursor"
+                  - type: object
+                    properties:
+                      comments:
+                        type: array
+                        items: { $ref: "#/components/schemas/Comment" }
+    post:
+      summary: Create comment (supports @{uuid} mentions and threading)
+      tags: [Comments]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body:              { type: string, description: "Use @{uuid} to mention a user" }
+                parent_comment_id: { type: string, format: uuid, description: Set for threaded reply }
+      responses:
+        "201":
+          description: Comment created; watchers and mentioned users notified asynchronously
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comment: { $ref: "#/components/schemas/Comment" }
+
+  /api/issues/{id}/comments/{cid}:
+    patch:
+      summary: Update comment (author only)
+      tags: [Comments]
+      parameters:
+        - { name: id,  in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: cid, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comment: { $ref: "#/components/schemas/Comment" }
+        "403": { description: Not the author }
+    delete:
+      summary: Soft-delete comment (author or admin+)
+      tags: [Comments]
+      parameters:
+        - { name: id,  in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: cid, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Deleted }
+        "403": { description: Not author or insufficient role }
+
+  /api/issues/{id}/watch:
+    post:
+      summary: Watch issue — receive notifications on comments/status changes
+      tags: [Issues]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Now watching (idempotent) }
+    delete:
+      summary: Unwatch issue
+      tags: [Issues]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Unwatched }
+
+  /api/issues/{id}/watchers:
+    get:
+      summary: List issue watchers
+      tags: [Issues]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  watchers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        user_id:      { type: string, format: uuid }
+                        email:        { type: string }
+                        display_name: { type: string, nullable: true }
+                        avatar_url:   { type: string, nullable: true }
+
+  # ── Sprints ─────────────────────────────────
+  /api/projects/{id}/sprints:
+    post:
+      summary: Create sprint in project
+      tags: [Sprints]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:       { type: string }
+                start_date: { type: string, format: date }
+                end_date:   { type: string, format: date }
+      responses:
+        "201":
+          description: Sprint created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sprint: { $ref: "#/components/schemas/Sprint" }
+    get:
+      summary: List sprints in project
+      tags: [Sprints]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sprints:
+                    type: array
+                    items: { $ref: "#/components/schemas/Sprint" }
+
+  /api/sprints/{id}:
+    patch:
+      summary: Update sprint name/dates
+      tags: [Sprints]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:       { type: string }
+                start_date: { type: string, format: date }
+                end_date:   { type: string, format: date }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sprint: { $ref: "#/components/schemas/Sprint" }
+
+  /api/sprints/{id}/start:
+    post:
+      summary: Start sprint (moves to active — only one active sprint per project)
+      tags: [Sprints]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Sprint started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sprint: { $ref: "#/components/schemas/Sprint" }
+        "409": { description: Another sprint is already active }
+
+  /api/sprints/{id}/complete:
+    post:
+      summary: Complete sprint with carry-over
+      tags: [Sprints]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                next_sprint_id:
+                  type: string
+                  format: uuid
+                  description: Sprint to receive carry-over issues. Omit to send them to backlog.
+                carry_over_issue_ids:
+                  type: array
+                  items: { type: string, format: uuid }
+                  description: Subset of incomplete issues to carry forward. Others go to backlog.
+      responses:
+        "200":
+          description: Sprint completed. velocity_points calculated from completed issues.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sprint: { $ref: "#/components/schemas/Sprint" }
+
+  /api/sprints/{id}/incomplete:
+    get:
+      summary: List incomplete issues in sprint (useful before completing)
+      tags: [Sprints]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issues:
+                    type: array
+                    items: { $ref: "#/components/schemas/Issue" }
+
+  /api/sprints/{id}/issues:
+    post:
+      summary: Add existing issue to sprint
+      tags: [Sprints]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issue_id]
+              properties:
+                issue_id: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Issue added to sprint
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue: { $ref: "#/components/schemas/Issue" }
+
+  /api/sprints/{id}/issues/{issueId}:
+    delete:
+      summary: Remove issue from sprint (moves to backlog)
+      tags: [Sprints]
+      parameters:
+        - { name: id,      in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: issueId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Issue removed from sprint
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  issue: { $ref: "#/components/schemas/Issue" }
+
+  # ── Notifications ────────────────────────────
+  /api/users/me/notifications:
+    get:
+      summary: List notifications for current user (cursor paginated)
+      tags: [Notifications]
+      parameters:
+        - { name: cursor,   in: query, required: false, schema: { type: string } }
+        - { name: limit,    in: query, required: false, schema: { type: integer, default: 20 } }
+        - { name: unread,   in: query, required: false, schema: { type: boolean } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Cursor"
+                  - type: object
+                    properties:
+                      notifications:
+                        type: array
+                        items: { $ref: "#/components/schemas/Notification" }
+
+  /api/users/me/notifications/{id}/read:
+    patch:
+      summary: Mark a single notification as read
+      tags: [Notifications]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Marked read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notification: { $ref: "#/components/schemas/Notification" }
+        "403": { description: Not the recipient }
+        "404": { description: Not found }
+
+  /api/users/me/notifications/read-all:
+    patch:
+      summary: Mark all notifications as read
+      tags: [Notifications]
+      responses:
+        "200":
+          description: All marked read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated: { type: integer, description: Number of notifications marked read }
+
+  # ── Search ───────────────────────────────────
+  /api/search:
+    get:
+      summary: Full-text and structured issue search
+      description: >
+        When `q` is provided, uses PostgreSQL `websearch_to_tsquery` on a GIN-indexed tsvector
+        of issue title + description, ranked by `ts_rank`. Structured filters can be combined
+        with or without `q`. Results are scoped to projects the caller is a member of.
+        Cursor pagination on `(created_at, id)`.
+      tags: [Search]
+      parameters:
+        - { name: q,          in: query, required: false, schema: { type: string }, description: Full-text query (websearch syntax) }
+        - { name: project_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: status,     in: query, required: false, schema: { type: string, format: uuid }, description: Status ID }
+        - { name: assignee,   in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: priority,   in: query, required: false, schema: { type: string, enum: [lowest, low, medium, high, critical] } }
+        - { name: type,       in: query, required: false, schema: { type: string, enum: [epic, story, task, bug, subtask] } }
+        - { name: cursor,     in: query, required: false, schema: { type: string } }
+        - { name: limit,      in: query, required: false, schema: { type: integer, default: 20, maximum: 100 } }
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Cursor"
+                  - type: object
+                    properties:
+                      issues:
+                        type: array
+                        items: { $ref: "#/components/schemas/Issue" }

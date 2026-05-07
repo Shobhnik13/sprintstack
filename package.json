@@ -1,0 +1,44 @@
+{
+  "name": "swiggy-assignment",
+  "module": "server.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "kill $(lsof -ti :3000); bun --watch server.ts",
+    "start": "bun run server.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run db/migrate.ts",
+    "db:seed": "bun run db/seed.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/bun": "latest",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "@types/ws": "^8.18.1",
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "bullmq": "^5.76.5",
+    "cookie-parser": "^1.4.7",
+    "debug": "^4.4.3",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
+    "ioredis": "^5.10.1",
+    "jsonwebtoken": "^9.0.3",
+    "postgres": "^3.4.9",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
+    "ws": "^8.20.0",
+    "yaml": "^2.8.4",
+    "zod": "^4.4.3"
+  }
+}
