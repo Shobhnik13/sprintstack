@@ -2,11 +2,11 @@ FROM oven/bun:1-alpine AS base
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json bun.lockb* ./
+COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 
 FROM base AS build
-COPY package.json bun.lockb* ./
+COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY . .
 
@@ -22,6 +22,8 @@ COPY --from=build /app/ws ./ws
 COPY --from=build /app/utils ./utils
 COPY --from=build /app/types ./types
 COPY --from=build /app/db ./db
+COPY --from=build /app/openapi.json ./
+COPY --from=build /app/openapi.yaml ./
 COPY --from=build /app/package.json ./
 COPY --from=build /app/drizzle.config.ts ./
 COPY --from=build /app/tsconfig.json ./

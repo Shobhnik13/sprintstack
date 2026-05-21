@@ -1,8 +1,11 @@
 # SprintStack
 
-SprintStack is an open-source backend template for building project management platforms with workspaces, projects, issues, sprints, workflows, comments, activity feeds, notifications, search, and real-time presence.
+SprintStack is an open-source template for building project management platforms. The repository is now split into two clear parts:
 
-It is built with **Bun + TypeScript + Express + PostgreSQL + Redis + BullMQ + Socket.IO**.
+- `backend/` - Bun, TypeScript, Express, PostgreSQL, Redis, BullMQ, Socket.IO, Drizzle, and OpenAPI.
+- `landing/` - a static HTML landing page for the open-source template.
+
+The backend includes workspaces, projects, issues, sprints, workflows, comments, activity feeds, notifications, search, and real-time presence.
 
 ## Features
 
@@ -20,7 +23,29 @@ It is built with **Bun + TypeScript + Express + PostgreSQL + Redis + BullMQ + So
 | Realtime | Socket.IO presence and event broadcasting |
 | API Docs | OpenAPI spec served through Swagger UI |
 
-## Tech Stack
+## Repository Structure
+
+```text
+.
+|-- backend/
+|   |-- controllers/      HTTP request handlers
+|   |-- db/               Drizzle schema, migrations, and seed data
+|   |-- middleware/       Auth, validation, and error handling middleware
+|   |-- routes/           Express route registration
+|   |-- services/         Business logic
+|   |-- utils/            Shared helpers for cache, queues, pagination, and JWT
+|   |-- workers/          BullMQ workers for async jobs
+|   |-- ws/               WebSocket server, presence, publishing, and replay
+|   |-- openapi.*         API specification
+|   |-- package.json      Backend scripts and dependencies
+|   `-- docker-compose.yml
+|-- landing/
+|   `-- index.html        Static landing page
+|-- LICENSE
+`-- README.md
+```
+
+## Backend Stack
 
 | Layer | Technology |
 |---|---|
@@ -33,30 +58,42 @@ It is built with **Bun + TypeScript + Express + PostgreSQL + Redis + BullMQ + So
 | WebSocket | Socket.IO |
 | Validation | Zod |
 
-## Running Locally
+## Run The Backend Locally
 
 ### Prerequisites
 
 - [Bun](https://bun.sh) >= 1.0
 - [Docker](https://www.docker.com) and Docker Compose
 
-### 1. Install dependencies
+### 1. Enter the backend folder
+
+```bash
+cd backend
+```
+
+### 2. Install dependencies
 
 ```bash
 bun install
 ```
 
-### 2. Start PostgreSQL and Redis
+### 3. Start PostgreSQL and Redis
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This starts PostgreSQL on `localhost:5432` and Redis on `localhost:6379`.
 
-### 3. Configure environment
+### 4. Configure environment
 
-Create a `.env` file in the project root:
+Create `backend/.env` from the example file:
+
+```bash
+cp .env.example .env
+```
+
+Default local values:
 
 ```env
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sprintstack_pm
@@ -66,21 +103,19 @@ PORT=3000
 NODE_ENV=development
 ```
 
-You can also use `.env.example` as the starting point.
-
-### 4. Run migrations
+### 5. Run migrations
 
 ```bash
 bun run db:migrate
 ```
 
-### 5. Seed the database
+### 6. Seed the database
 
 ```bash
 bun run db:seed
 ```
 
-The seed script creates a ready-to-use demo workspace with users, a project, workflow states, one active sprint, sample issues, comments, activity, and notifications.
+The seed script creates a demo workspace with users, projects, workflows, sprints, sample issues, comments, activity, and notifications.
 
 Demo users:
 
@@ -89,17 +124,19 @@ Demo users:
 | `alice@example.com` | `password123` |
 | `bob@example.com` | `password123` |
 
-### 6. Start the server
+### 7. Start the API
 
 ```bash
 bun run dev
 ```
 
-The API starts at `http://localhost:3000`.
+The API starts at:
 
-### 7. Explore the API
+```text
+http://localhost:3000
+```
 
-Open Swagger UI:
+Swagger UI is available at:
 
 ```text
 http://localhost:3000/docs
@@ -107,7 +144,9 @@ http://localhost:3000/docs
 
 Log in with `alice@example.com` / `password123` via `POST /api/auth/login` first. Login sets the JWT cookie used by protected endpoints.
 
-## Available Scripts
+## Backend Scripts
+
+Run these from `backend/`:
 
 ```bash
 bun run dev          # Start with hot reload
@@ -118,19 +157,15 @@ bun run db:seed      # Seed development data
 bun run db:studio    # Open Drizzle Studio
 ```
 
-## Project Structure
+## Landing Page
+
+The landing page is a static HTML file:
 
 ```text
-controllers/     HTTP request handlers
-db/              Drizzle schema, migrations, and seed data
-middleware/      Auth, validation, and error handling middleware
-routes/          Express route registration
-services/        Business logic
-utils/           Shared helpers for cache, queues, pagination, and JWT
-workers/         BullMQ workers for async jobs
-ws/              WebSocket server, presence, publishing, and replay
-openapi.*        API specification
+landing/index.html
 ```
+
+You can open it directly in a browser, or publish the `landing/` folder with any static hosting provider.
 
 ## License
 
