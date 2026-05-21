@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
-  title: Project Management Platform API
+  title: SprintStack API
   version: 1.0.0
   description: >
-    Jira-like project management backend — Swiggy SDE-1 Assignment.
+    Open-source backend template for a project management platform.
     Authentication uses HTTP-only cookie (token) set on login.
     All protected endpoints require the cookie to be present.
 

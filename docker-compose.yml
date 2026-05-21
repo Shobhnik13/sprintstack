@@ -1,24 +1,24 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: swiggy_pm_postgres
+    container_name: sprintstack_pm_postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: swiggy_pm
+      POSTGRES_DB: sprintstack_pm
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d swiggy_pm"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sprintstack_pm"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   redis:
     image: redis:7-alpine
-    container_name: swiggy_pm_redis
+    container_name: sprintstack_pm_redis
     ports:
       - "6379:6379"
     volumes:

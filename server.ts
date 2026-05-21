@@ -1,7 +1,7 @@
 import express from "express";
 import cookieParser from "cookie-parser";
 import { readFileSync } from "node:fs";
-const swaggerSpec = JSON.parse(readFileSync(`${import.meta.dir}/openapi.json`, "utf8"));
+const swaggerSpec = JSON.parse(readFileSync(new URL("./openapi.json", import.meta.url), "utf8"));
 import { errorHandler } from "./middleware/errorHandler.ts";
 import { initWsServer } from "./ws/server.ts";
 import { startActivityWorker } from "./workers/activity.worker.ts";
@@ -22,14 +22,14 @@ app.use(cookieParser());
 
 app.get("/docs.json", (_req, res) => {
   res.setHeader("Content-Type", "application/json");
-  res.send(readFileSync(`${import.meta.dir}/openapi.json`, "utf8"));
+  res.send(readFileSync(new URL("./openapi.json", import.meta.url), "utf8"));
 });
 app.get("/docs", (_req, res) => {
   res.setHeader("Content-Type", "text/html");
   res.send(`<!DOCTYPE html>
 <html>
 <head>
-  <title>API Docs</title>
+  <title>SprintStack API Docs</title>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css">

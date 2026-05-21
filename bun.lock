@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "swiggy-assignment",
+      "name": "sprintstack",
       "dependencies": {
         "bcryptjs": "^3.0.3",
         "bullmq": "^5.76.5",

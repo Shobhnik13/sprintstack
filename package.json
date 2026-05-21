@@ -1,8 +1,10 @@
 {
-  "name": "swiggy-assignment",
+  "name": "sprintstack",
+  "description": "Open-source backend template for a project management platform.",
   "module": "server.ts",
   "type": "module",
-  "private": true,
+  "private": false,
+  "license": "MIT",
   "scripts": {
     "dev": "kill $(lsof -ti :3000); bun --watch server.ts",
     "start": "bun run server.ts",

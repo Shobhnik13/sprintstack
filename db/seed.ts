@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
-function pick<T>(arr: T[]): T {
+function pick<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
 

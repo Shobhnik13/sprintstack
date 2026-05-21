@@ -1,8 +1,25 @@
-# Project Management Platform — Swiggy SDE-1 Assignment
+# SprintStack
 
-A Jira-like project management backend built with **Bun + TypeScript + Express + PostgreSQL + Redis + BullMQ + Socket.IO**.
+SprintStack is an open-source backend template for building project management platforms with workspaces, projects, issues, sprints, workflows, comments, activity feeds, notifications, search, and real-time presence.
 
----
+It is built with **Bun + TypeScript + Express + PostgreSQL + Redis + BullMQ + Socket.IO**.
+
+## Features
+
+| Area | Included |
+|---|---|
+| Authentication | Email/password auth with HTTP-only JWT cookies |
+| Workspaces | Workspace ownership, membership, and roles |
+| Projects | Project records, workflow statuses, and workflow transitions |
+| Issues | Issue CRUD, assignees, priorities, watchers, and status transitions |
+| Sprints | Sprint lifecycle support with issue carry-over |
+| Comments | Threaded issue comments with mention support |
+| Activity | Project activity feed backed by queued workers |
+| Notifications | Per-user notification inbox |
+| Search | Full-text and structured issue search |
+| Realtime | Socket.IO presence and event broadcasting |
+| API Docs | OpenAPI spec served through Swagger UI |
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -16,87 +33,79 @@ A Jira-like project management backend built with **Bun + TypeScript + Express +
 | WebSocket | Socket.IO |
 | Validation | Zod |
 
----
-
 ## Running Locally
 
 ### Prerequisites
+
 - [Bun](https://bun.sh) >= 1.0
 - [Docker](https://www.docker.com) and Docker Compose
 
----
-
-### Step 1 — Install dependencies
+### 1. Install dependencies
 
 ```bash
 bun install
 ```
 
-### Step 2 — Start PostgreSQL and Redis
+### 2. Start PostgreSQL and Redis
 
 ```bash
 docker-compose up -d
 ```
 
-Starts PostgreSQL on `localhost:5432` and Redis on `localhost:6379`.  
-The app itself runs natively via Bun (Step 6) — not inside Docker.
+This starts PostgreSQL on `localhost:5432` and Redis on `localhost:6379`.
 
-### Step 3 — Configure environment
+### 3. Configure environment
 
 Create a `.env` file in the project root:
 
 ```env
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/swiggy
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/sprintstack_pm
 REDIS_URL=redis://localhost:6379
-JWT_SECRET=supersecretkey
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
 PORT=3000
+NODE_ENV=development
 ```
 
-### Step 4 — Run migrations
+You can also use `.env.example` as the starting point.
+
+### 4. Run migrations
 
 ```bash
 bun run db:migrate
 ```
 
-Creates all 16 tables in the database.
-
-### Step 5 — Seed the database
+### 5. Seed the database
 
 ```bash
 bun run db:seed
 ```
 
-This populates the DB with ready-to-use test data:
+The seed script creates a ready-to-use demo workspace with users, a project, workflow states, one active sprint, sample issues, comments, activity, and notifications.
 
-| Resource | Details |
+Demo users:
+
+| Email | Password |
 |---|---|
-| Users | `alice@example.com` and `bob@example.com` — password: `password123` |
-| Workspace | **Acme Engineering** (both users are members) |
-| Project | **Consumer App** (`APP`) with default workflow |
-| Workflow | Todo → In Progress → In Review → Done (with transitions) |
-| Sprint | **Sprint 1** — active |
-| Issues | 5 issues across different types, statuses, and assignees |
-| Comments | 2 comments on the first issue (one with `@mention`) |
+| `alice@example.com` | `password123` |
+| `bob@example.com` | `password123` |
 
-### Step 6 — Start the server
+### 6. Start the server
 
 ```bash
 bun run dev
 ```
 
-Server starts at `http://localhost:3000` with hot reload.
+The API starts at `http://localhost:3000`.
 
-### Step 7 — Explore the API
+### 7. Explore the API
 
-Open Swagger UI in your browser:
+Open Swagger UI:
 
-```
+```text
 http://localhost:3000/docs
 ```
 
-Log in with `alice@example.com` / `password123` via `POST /api/auth/login` first — this sets the JWT cookie that all subsequent requests use. Every endpoint in the Swagger UI will then work authenticated.
-
----
+Log in with `alice@example.com` / `password123` via `POST /api/auth/login` first. Login sets the JWT cookie used by protected endpoints.
 
 ## Available Scripts
 
@@ -106,5 +115,23 @@ bun run start        # Start without hot reload
 bun run db:generate  # Generate migrations from schema changes
 bun run db:migrate   # Apply migrations
 bun run db:seed      # Seed development data
-bun run db:studio    # Open Drizzle Studio (DB GUI)
+bun run db:studio    # Open Drizzle Studio
 ```
+
+## Project Structure
+
+```text
+controllers/     HTTP request handlers
+db/              Drizzle schema, migrations, and seed data
+middleware/      Auth, validation, and error handling middleware
+routes/          Express route registration
+services/        Business logic
+utils/           Shared helpers for cache, queues, pagination, and JWT
+workers/         BullMQ workers for async jobs
+ws/              WebSocket server, presence, publishing, and replay
+openapi.*        API specification
+```
+
+## License
+
+MIT
